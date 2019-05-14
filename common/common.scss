@@ -1,0 +1,20 @@
+.topic-list-vote {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: $primary;
+}
+
+button[disabled].topic-list-vote {
+  color: $primary-low;
+}
+
+.topic-list-item.can-vote {
+  .link-bottom-line {
+    margin-left: 35px;
+  }
+
+  .topic-statuses {
+    float: none;
+  }
+}

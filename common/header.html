@@ -1,0 +1,74 @@
+<script type="text/x-handlebars" data-template-name="/connectors/topic-list-before-status/topic-list-vote-container.raw">
+  {{#if context.topic.can_vote}}
+    <button class="topic-list-vote">
+      {{d-icon 'chevron-up'}}
+    </button>
+  {{/if}}
+</script>
+
+<script type="text/discourse-plugin" version="0.8">
+  const { ajax } = require('discourse/lib/ajax');
+  const { popupAjaxError } = require('discourse/lib/ajax-error');
+  const { on, observes } = require('ember-addons/ember-computed-decorators');
+  const container = Discourse.__container__;
+
+  api.modifyClass('component:topic-list-item', {
+    didRender() {
+      this._super(...arguments);
+      this._moveVoteButton();
+      if (this.get('topic.can_vote')) {
+        this._setupVoteAction();
+      }
+    },
+
+    _moveVoteButton() {
+      this.$('.topic-list-vote').insertBefore(this.$('.link-top-line'));
+    },
+
+    _setupVoteAction() {
+      const topic = this.get('topic');
+      const currentUser = this.get('currentUser');
+      const $vote = this.$('.topic-list-vote');
+
+      let disabled = !topic.get('can_vote') || topic.get('user_voted') || currentUser.get('votes_exceeded');
+
+      $vote.attr('disabled', disabled);
+
+      if (!disabled) {
+        $vote.on('click.topic-list-vote', (e) => {
+          if (this.get('currentUser')) {
+            this.addVote();
+          } else {
+            const controller = container.lookup('controller:application');
+            controller.send('showLogin');
+          }
+        });
+      }
+
+      this.$().addClass('can-vote');
+    },
+
+    addVote() {
+      const topic = this.get('topic');
+      const currentUser = this.get('currentUser');
+
+      return ajax("/voting/vote", {
+        type: "POST",
+        data: {
+          topic_id: topic.id
+        }
+      })
+        .then(result => {
+          topic.set("vote_count", result.vote_count);
+          topic.set("user_voted", true);
+          currentUser.set("votes_exceeded", !result.can_vote);
+          topic.set("who_voted", result.who_voted);
+          this.rerenderBuffer();
+          Ember.run.scheduleOnce('afterRender', () => {
+            this._setupVoteAction();
+          });
+        })
+        .catch(popupAjaxError);
+    }
+  });
+</script>
